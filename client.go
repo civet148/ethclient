@@ -8,6 +8,11 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"math/big"
+	"strings"
+)
+
+const (
+	hexPrefix = "0x"
 )
 
 type EthereumClient struct {
@@ -25,6 +30,9 @@ func NewEthereumClient(strNodeUrl string) *EthereumClient {
 }
 
 func Hex2Hash(hash string) common.Hash {
+	if strings.HasPrefix(hash, hexPrefix) {
+		hash = strings.TrimPrefix(hash, hexPrefix)
+	}
 	return common.HexToHash(hash)
 }
 
