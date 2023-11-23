@@ -41,7 +41,11 @@ func Uint642Big(n uint64) *big.Int {
 }
 
 func Hex2Address(addr string) common.Address {
-	return common.HexToAddress(addr)
+	mixedAddr, err := common.NewMixedcaseAddressFromString(addr)
+	if err != nil {
+		return common.Address{}
+	}
+	return mixedAddr.Address()
 }
 
 func (m *EthereumClient) Client() *ethclient.Client {
