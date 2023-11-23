@@ -7,7 +7,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/rpc"
 	"math/big"
 )
 
@@ -78,9 +77,9 @@ func (m *EthereumClient) PeerCount(ctx context.Context) (uint64, error) {
 	return m.ethcli.PeerCount(ctx)
 }
 
-func (m *EthereumClient) BlockReceipts(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) ([]*types.Receipt, error) {
-	return m.ethcli.BlockReceipts(ctx, blockNrOrHash)
-}
+//func (m *EthereumClient) BlockReceipts(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) ([]*types.Receipt, error) {
+//	return m.ethcli.BlockReceipts(ctx, blockNrOrHash)
+//}
 
 func (m *EthereumClient) HeaderByHash(ctx context.Context, hash string) (*types.Header, error) {
 	return m.ethcli.HeaderByHash(ctx, Hex2Hash(hash))
@@ -122,33 +121,33 @@ func (m *EthereumClient) BalanceAt(ctx context.Context, strAddress string, numbe
 	return m.ethcli.BalanceAt(ctx, Hex2Address(strAddress), Int642Big(int64(number)))
 }
 
-func (m *EthereumClient) BalanceAtHash(ctx context.Context, strAddress string, strBlockHash string) (*big.Int, error) {
-	return m.ethcli.BalanceAtHash(ctx, Hex2Address(strAddress), Hex2Hash(strBlockHash))
-}
+//func (m *EthereumClient) BalanceAtHash(ctx context.Context, strAddress string, strBlockHash string) (*big.Int, error) {
+//	return m.ethcli.BalanceAtHash(ctx, Hex2Address(strAddress), Hex2Hash(strBlockHash))
+//}
 
 func (m *EthereumClient) StorageAt(ctx context.Context, strAddress, strKey string, number uint64) ([]byte, error) {
 	return m.ethcli.StorageAt(ctx, Hex2Address(strAddress), Hex2Hash(strKey), Int642Big(int64(number)))
 }
 
-func (m *EthereumClient) StorageAtHash(ctx context.Context, strAddress, strKey, strBlockHash string) ([]byte, error) {
-	return m.ethcli.StorageAtHash(ctx, Hex2Address(strAddress), Hex2Hash(strKey), Hex2Hash(strBlockHash))
-}
+//func (m *EthereumClient) StorageAtHash(ctx context.Context, strAddress, strKey, strBlockHash string) ([]byte, error) {
+//	return m.ethcli.StorageAtHash(ctx, Hex2Address(strAddress), Hex2Hash(strKey), Hex2Hash(strBlockHash))
+//}
 
 func (m *EthereumClient) CodeAt(ctx context.Context, strAddress string, number uint64) ([]byte, error) {
 	return m.ethcli.CodeAt(ctx, Hex2Address(strAddress), Int642Big(int64(number)))
 }
 
-func (m *EthereumClient) CodeAtHash(ctx context.Context, strAddress, strBlockHash string) ([]byte, error) {
-	return m.ethcli.CodeAtHash(ctx, Hex2Address(strAddress), Hex2Hash(strBlockHash))
-}
+//func (m *EthereumClient) CodeAtHash(ctx context.Context, strAddress, strBlockHash string) ([]byte, error) {
+//	return m.ethcli.CodeAtHash(ctx, Hex2Address(strAddress), Hex2Hash(strBlockHash))
+//}
 
 func (m *EthereumClient) NonceAt(ctx context.Context, strAddress string, number uint64) (uint64, error) {
 	return m.ethcli.NonceAt(ctx, Hex2Address(strAddress), Int642Big(int64(number)))
 }
 
-func (m *EthereumClient) NonceAtHash(ctx context.Context, strAddress string, strBlockHash string) (uint64, error) {
-	return m.ethcli.NonceAtHash(ctx, Hex2Address(strAddress), Hex2Hash(strBlockHash))
-}
+//func (m *EthereumClient) NonceAtHash(ctx context.Context, strAddress string, strBlockHash string) (uint64, error) {
+//	return m.ethcli.NonceAtHash(ctx, Hex2Address(strAddress), Hex2Hash(strBlockHash))
+//}
 
 func (m *EthereumClient) FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
 	return m.ethcli.FilterLogs(ctx, q)
