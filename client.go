@@ -44,6 +44,10 @@ func Hex2Address(addr string) common.Address {
 	return common.HexToAddress(addr)
 }
 
+func (m *EthereumClient) Client() *ethclient.Client {
+	return m.ethcli
+}
+
 func (m *EthereumClient) ChainID(ctx context.Context) (chainId int64, err error) {
 	var id *big.Int
 	id, err = m.ethcli.ChainID(ctx)
