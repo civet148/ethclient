@@ -29,6 +29,13 @@ func NewEthereumClient(strNodeUrl string) *EthereumClient {
 	}
 }
 
+func TrimHexPrefix(str string) string {
+	if strings.HasPrefix(str, hexPrefix) {
+		str = strings.TrimPrefix(str, hexPrefix)
+	}
+	return str
+}
+
 func Hex2Hash(hash string) common.Hash {
 	if strings.HasPrefix(hash, hexPrefix) {
 		hash = strings.TrimPrefix(hash, hexPrefix)
