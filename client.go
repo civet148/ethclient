@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -29,6 +30,13 @@ func NewEthereumClient(strNodeUrl string) *EthereumClient {
 	}
 }
 
+func CallOpts(strAddress string) *bind.CallOpts {
+	address := Hex2Address(strAddress)
+	return &bind.CallOpts{
+		From: address,
+	}
+}
+
 func TrimHexPrefix(str string) string {
 	if strings.HasPrefix(str, hexPrefix) {
 		str = strings.TrimPrefix(str, hexPrefix)
@@ -37,9 +45,7 @@ func TrimHexPrefix(str string) string {
 }
 
 func Hex2Hash(hash string) common.Hash {
-	if strings.HasPrefix(hash, hexPrefix) {
-		hash = strings.TrimPrefix(hash, hexPrefix)
-	}
+	hash = TrimHexPrefix(hash)
 	return common.HexToHash(hash)
 }
 
