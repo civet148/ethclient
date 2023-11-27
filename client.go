@@ -1,20 +1,36 @@
 package ethclient
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"math/big"
+	"os"
 	"strings"
 )
 
 const (
-	hexPrefix = "0x"
+	hexPrefix   = "0x"
+	NullAddress = "0x0000000000000000000000000000000000000000"
 )
+
+type CallInput struct {
+	Argument abi.Argument
+	Value    interface{}
+}
+
+type CallMethod struct {
+	Name   string
+	Sig    string
+	ID     string
+	Inputs []*CallInput
+}
 
 type EthereumClient struct {
 	ethcli *ethclient.Client
@@ -236,4 +252,171 @@ func (m *EthereumClient) EstimateGas(ctx context.Context, msg ethereum.CallMsg) 
 
 func (m *EthereumClient) SendTransaction(ctx context.Context, tx *types.Transaction) error {
 	return m.ethcli.SendTransaction(ctx, tx)
+}
+
+func (m *EthereumClient) GetContractAddrByTxHash(ctx context.Context, hash string) (strContractAddr string, err error) {
+	var tx *types.Transaction
+	var receipt *types.Receipt
+	var contractAddress common.Address
+	tx, _, err = m.TransactionByHash(ctx, hash)
+	if err != nil {
+		return "", fmt.Errorf("get receipt by hash [%s] error [%s]\n", hash, err)
+	}
+
+	if tx.To() != nil {
+		contractAddress = *tx.To()
+	}
+	receipt, err = m.TransactionReceipt(ctx, hash)
+	if err != nil {
+		return "", fmt.Errorf("get receipt by hash [%s] error [%s]\n", hash, err)
+	}
+	if contractAddress.String() == NullAddress && receipt.ContractAddress.String() != NullAddress {
+		contractAddress = receipt.ContractAddress
+	}
+	if contractAddress.String() == NullAddress {
+		return "", fmt.Errorf("get contract address by tx hash [%s] error: not found", hash)
+	}
+	return contractAddress.String(), nil
+}
+
+func (m *EthereumClient) GetTxCallMethod(ctx context.Context, hash string, strABI string) (calldata *CallMethod, err error) {
+	var tx *types.Transaction
+	var receipt *types.Receipt
+	var contractAddress common.Address
+	tx, _, err = m.TransactionByHash(ctx, hash)
+	if err != nil {
+		return nil, fmt.Errorf("get receipt by hash [%s] error [%s]\n", hash, err)
+	}
+	if tx.To() != nil {
+		contractAddress = *tx.To()
+	}
+	receipt, err = m.TransactionReceipt(ctx, hash)
+	if err != nil {
+		return nil, fmt.Errorf("get receipt by hash [%s] error [%s]\n", hash, err)
+	}
+	if contractAddress.String() == NullAddress && receipt.ContractAddress.String() != NullAddress {
+		contractAddress = receipt.ContractAddress
+	}
+	if contractAddress.String() == NullAddress {
+		return nil, fmt.Errorf("get contract address by tx hash [%s] error: not found", hash)
+	}
+	var contractABI abi.ABI
+	contractABI, err = m.LoadABI(strABI)
+	if err != nil {
+		return nil, err
+	}
+	data := tx.Data()
+	id := data[0:4]
+	var method *abi.Method
+	method, err = contractABI.MethodById(id)
+	if method == nil {
+		if err != nil {
+			return nil, fmt.Errorf("search by method id 0x%x not found", id)
+		}
+	}
+
+	var inputValues []interface{}
+	inputValues, err = method.Inputs.UnpackValues(data[4:])
+	if err != nil {
+		return nil, fmt.Errorf("unpack values error [%s]", err)
+	}
+	var inputs []*CallInput
+	for i, v := range inputValues {
+		inputs = append(inputs, &CallInput{
+			Argument: method.Inputs[i],
+			Value:    v,
+		})
+	}
+	return &CallMethod{
+		Name:   method.Name,
+		Sig:    method.Sig,
+		ID:     fmt.Sprintf("0x%x", method.ID),
+		Inputs: inputs,
+	}, nil
+}
+
+func (m *EthereumClient) GetTxEvents(ctx context.Context, hash string, strABI string) (events []*CallMethod, err error) {
+	var tx *types.Transaction
+	var receipt *types.Receipt
+	var contractAddress common.Address
+	tx, _, err = m.TransactionByHash(ctx, hash)
+	if err != nil {
+		return nil, fmt.Errorf("get receipt by hash [%s] error [%s]\n", hash, err)
+	}
+
+	if tx.To() != nil {
+		contractAddress = *tx.To()
+	}
+	receipt, err = m.TransactionReceipt(ctx, hash)
+	if err != nil {
+		return nil, fmt.Errorf("get receipt by hash [%s] error [%s]\n", hash, err)
+	}
+	if contractAddress.String() == NullAddress && receipt.ContractAddress.String() != NullAddress {
+		contractAddress = receipt.ContractAddress
+	}
+	if contractAddress.String() == NullAddress {
+		return nil, fmt.Errorf("get contract address by tx hash [%s] error: not found", hash)
+	}
+	var contractABI abi.ABI
+	contractABI, err = m.LoadABI(strABI)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, lo := range receipt.Logs {
+		var evt *abi.Event
+		evt, err = contractABI.EventByID(lo.Topics[0])
+		if err != nil {
+			return nil, fmt.Errorf("get event by id error: %s", err)
+		}
+		if evt == nil {
+			continue
+		}
+		inputValues := lo.Topics[1:]
+		var inputs []*CallInput
+		for i, v := range inputValues {
+			inputs = append(inputs, &CallInput{
+				Argument: evt.Inputs[i],
+				Value:    v.String(),
+			})
+		}
+		events = append(events, &CallMethod{
+			Name:   evt.Name,
+			Sig:    evt.Sig,
+			ID:     evt.ID.String(),
+			Inputs: inputs,
+		})
+	}
+	return
+}
+
+// LoadABI load ABI from file or json string
+func (m *EthereumClient) LoadABI(strABI string) (contractABI abi.ABI, err error) {
+	if strings.HasSuffix(strABI, ".abi") {
+		return m.loadABIFromFile(strABI)
+	}
+	return m.loadABIFromString(strABI)
+}
+
+func (m *EthereumClient) loadABIFromFile(strAbiFile string) (contractABI abi.ABI, err error) {
+	var file *os.File
+	file, err = os.Open(strAbiFile)
+	if err != nil {
+		return abi.ABI{}, fmt.Errorf("read abi file %s error: %s", strAbiFile, err.Error())
+	}
+
+	contractABI, err = abi.JSON(file)
+	if err != nil {
+		return abi.ABI{}, fmt.Errorf("unmarshal abi json error: %s", err.Error())
+	}
+	return contractABI, nil
+}
+
+func (m *EthereumClient) loadABIFromString(strAbi string) (contractABI abi.ABI, err error) {
+	reader := bytes.NewBufferString(strAbi)
+	contractABI, err = abi.JSON(reader)
+	if err != nil {
+		return abi.ABI{}, fmt.Errorf("unmarshal abi json error: %s", err.Error())
+	}
+	return contractABI, nil
 }
