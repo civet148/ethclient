@@ -289,6 +289,18 @@ func (m *EthereumClient) ContractCaller() bind.ContractCaller {
 	return m.ethcli
 }
 
+func (m *EthereumClient) ContractBackend() bind.ContractBackend {
+	return m.ethcli
+}
+
+func (m *EthereumClient) ContractFilter() bind.ContractFilterer {
+	return m.ethcli
+}
+
+func (m *EthereumClient) PendingContractCaller() bind.PendingContractCaller {
+	return m.ethcli
+}
+
 func (m *EthereumClient) GetContractAddrByTxHash(ctx context.Context, hash string) (strContractAddr string, err error) {
 	var tx *types.Transaction
 	var receipt *types.Receipt
