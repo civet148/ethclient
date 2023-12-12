@@ -3,12 +3,15 @@ package ethclient
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"encoding/hex"
 	"fmt"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"math/big"
 	"os"
@@ -46,8 +49,32 @@ func NewEthereumClient(strNodeUrl string) *EthereumClient {
 	}
 }
 
-func CallOpts(strAddress string) *bind.CallOpts {
-	address := Hex2Address(strAddress)
+// NewTransactOpts new transact options by private key string or *ecdsa.PrivateKey object and chain id
+func NewTransactOpts(privateKey interface{}, chainId int64) (txOpts *bind.TransactOpts, err error) {
+	var pk *ecdsa.PrivateKey
+	switch privateKey.(type) {
+	case string:
+		var pkBytes []byte
+		strPriKey := privateKey.(string)
+		strPriKey = TrimHexPrefix(strPriKey)
+		pkBytes, err = hex.DecodeString(strPriKey)
+		pk, err = crypto.ToECDSA(pkBytes)
+		if err != nil {
+			return nil, err
+		}
+	case []byte:
+		pk, err = crypto.ToECDSA(privateKey.([]byte))
+		if err != nil {
+			return nil, err
+		}
+	case *ecdsa.PrivateKey:
+		pk = privateKey.(*ecdsa.PrivateKey)
+	}
+	return bind.NewKeyedTransactorWithChainID(pk, big.NewInt(chainId))
+}
+
+func NewCallOpts(strFromAddr string) *bind.CallOpts {
+	address := Hex2Address(strFromAddr)
 	return &bind.CallOpts{
 		From: address,
 	}
