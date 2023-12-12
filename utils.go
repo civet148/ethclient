@@ -31,8 +31,8 @@ func NewTransactOptsWithValue(privateKey interface{}, chainId int64, value inter
 	if err != nil {
 		return nil, err
 	}
-	if value != nil {
-		return
+	if value == nil {
+		return nil, fmt.Errorf("value must be non-nil")
 	}
 	return newKeyedTransactorWithValue(pk, big.NewInt(chainId), value)
 }
