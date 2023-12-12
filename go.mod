@@ -3,7 +3,6 @@ module github.com/civet148/ethclient
 go 1.21.0
 
 require (
-	github.com/civet148/log v1.5.0
 	github.com/ethereum/go-ethereum v1.12.0
 )
 
