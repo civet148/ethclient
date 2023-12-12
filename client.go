@@ -281,6 +281,14 @@ func (m *EthereumClient) SendTransaction(ctx context.Context, tx *types.Transact
 	return m.ethcli.SendTransaction(ctx, tx)
 }
 
+func (m *EthereumClient) ContractTransactor() bind.ContractTransactor {
+	return m.ethcli
+}
+
+func (m *EthereumClient) ContractCaller() bind.ContractCaller {
+	return m.ethcli
+}
+
 func (m *EthereumClient) GetContractAddrByTxHash(ctx context.Context, hash string) (strContractAddr string, err error) {
 	var tx *types.Transaction
 	var receipt *types.Receipt
