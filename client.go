@@ -368,7 +368,7 @@ func (m *EthereumClient) GetTxEvents(ctx context.Context, hash string, strABI st
 			Inputs: inputs,
 		})
 	}
-	return
+	return events, nil
 }
 
 // LoadABI load ABI from file or json string
