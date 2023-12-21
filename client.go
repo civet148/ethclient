@@ -348,7 +348,7 @@ func (m *EthereumClient) GetTxEvents(ctx context.Context, hash string, strABI st
 		var evt *abi.Event
 		evt, err = contractABI.EventByID(lo.Topics[0])
 		if err != nil {
-			return nil, fmt.Errorf("get event by id error: %s", err)
+			continue //event id not found
 		}
 		if evt == nil {
 			continue
