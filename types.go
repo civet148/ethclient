@@ -1,6 +1,7 @@
 package ethclient
 
 import (
+	"encoding/hex"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/core/types"
 )
@@ -32,4 +33,28 @@ func (m *CallMethod) Unpack(v interface{}) error {
 		return err
 	}
 	return m.Method.Inputs.Copy(v, values)
+}
+
+func (m *CallMethod) Prototype() string {
+	return m.Method.Sig
+}
+
+func (m *CallMethod) Sig() string {
+	return m.Method.Sig
+}
+
+func (m *CallMethod) Name() string {
+	return m.Method.Name
+}
+
+func (m *CallMethod) ID() string {
+	return hex.EncodeToString(m.Method.ID)
+}
+
+func (m *CallMethod) InputValues() []interface{} {
+	values, err := m.Method.Inputs.UnpackValues(m.Data)
+	if err != nil {
+		return nil
+	}
+	return values
 }

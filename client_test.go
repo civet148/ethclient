@@ -4,9 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"math/big"
 	"testing"
 )
 
@@ -50,17 +48,12 @@ func TestGetTxMethod(t *testing.T) {
 		fmt.Printf("get method error %s\n", err)
 		return
 	}
-	type SafeTransferFrom struct {
-		From    common.Address //`json:"from"`
-		To      common.Address //`json:"to"`
-		TokenId *big.Int       //`json:"tokenId"`
-	}
-	var safeTransfer SafeTransferFrom
-	if err = method.Unpack(&safeTransfer); err != nil {
-		fmt.Printf("get tx method error %s\n", err)
-		return
-	}
-	printJson("SafeTransferFrom", safeTransfer)
+
+	name := method.Name()
+	id := method.ID()
+	prototype := method.Prototype()
+	values := method.InputValues()
+	fmt.Printf("method name [%s] id [%s] prototype [%s] values [%+v]\n", name, id, prototype, values)
 }
 
 func TestGetTxEvents(t *testing.T) {
