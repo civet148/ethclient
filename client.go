@@ -12,17 +12,31 @@ import (
 	"math/big"
 )
 
+type Option struct {
+	NodeUrl string
+	ABI     string
+}
+
 type EthereumClient struct {
+	ABI    abi.ABI
 	ethcli *ethclient.Client
 }
 
-func NewEthereumClient(strNodeUrl string) *EthereumClient {
-	ethcli, err := ethclient.Dial(strNodeUrl)
+func NewEthereumClient(opt *Option) *EthereumClient {
+	ethcli, err := ethclient.Dial(opt.NodeUrl)
 	if err != nil {
-		panic(fmt.Sprintf("dial to ethereum node [%s] error [%s]", strNodeUrl, err.Error()))
+		panic(fmt.Sprintf("dial to ethereum node [%s] error [%s]", opt.NodeUrl, err.Error()))
+	}
+	var abiObj abi.ABI
+	if opt.ABI != "" {
+		abiObj, err = LoadABI(opt.ABI)
+		if err != nil {
+			panic(err.Error())
+		}
 	}
 	return &EthereumClient{
 		ethcli: ethcli,
+		ABI:    abiObj,
 	}
 }
 
@@ -240,63 +254,30 @@ func (m *EthereumClient) GetContractAddrByTxHash(ctx context.Context, hash strin
 	return contractAddress.String(), nil
 }
 
-func (m *EthereumClient) GetTxCallMethod(ctx context.Context, hash string, strABI string) (calldata *CallMethod, err error) {
+func (m *EthereumClient) GetTxCallMethod(ctx context.Context, hash string) (callMethod *CallMethod, err error) {
 	var tx *types.Transaction
-	var receipt *types.Receipt
-	var contractAddress common.Address
 	tx, _, err = m.TransactionByHash(ctx, hash)
 	if err != nil {
-		return nil, fmt.Errorf("get receipt by hash [%s] error [%s]\n", hash, err)
+		return nil, fmt.Errorf("get tx by hash [%s] error [%s]\n", hash, err)
 	}
-	if tx.To() != nil {
-		contractAddress = *tx.To()
-	}
-	receipt, err = m.TransactionReceipt(ctx, hash)
-	if err != nil {
-		return nil, fmt.Errorf("get receipt by hash [%s] error [%s]\n", hash, err)
-	}
-	if contractAddress.String() == NullAddress && receipt.ContractAddress.String() != NullAddress {
-		contractAddress = receipt.ContractAddress
-	}
-	if contractAddress.String() == NullAddress {
-		return nil, fmt.Errorf("get contract address by tx hash [%s] error: not found", hash)
-	}
-	var contractABI abi.ABI
-	contractABI, err = LoadABI(strABI)
-	if err != nil {
-		return nil, err
+	if len(m.ABI.Methods) == 0 {
+		return nil, fmt.Errorf("abi method undefined")
 	}
 	data := tx.Data()
 	id := data[0:4]
 	var method *abi.Method
-	method, err = contractABI.MethodById(id)
-	if method == nil {
-		if err != nil {
-			return nil, fmt.Errorf("search by method id 0x%x not found", id)
-		}
-	}
-
-	var inputValues []interface{}
-	inputValues, err = method.Inputs.UnpackValues(data[4:])
+	method, err = m.ABI.MethodById(id)
 	if err != nil {
-		return nil, fmt.Errorf("unpack values error [%s]", err)
-	}
-	var inputs []*CallInput
-	for i, v := range inputValues {
-		inputs = append(inputs, &CallInput{
-			Argument: method.Inputs[i],
-			Value:    v,
-		})
+		return nil, err
 	}
 	return &CallMethod{
-		Name:   method.Name,
-		Sig:    method.Sig,
-		ID:     fmt.Sprintf("0x%x", method.ID),
-		Inputs: inputs,
+		Method: method,
+		ABI:    m.ABI,
+		Data:   data[4:],
 	}, nil
 }
 
-func (m *EthereumClient) GetTxEvents(ctx context.Context, hash string, strABI string) (events []*CallEvent, err error) {
+func (m *EthereumClient) GetTxEvents(ctx context.Context, hash string) (events []*CallEvent, err error) {
 	var tx *types.Transaction
 	var receipt *types.Receipt
 	var contractAddress common.Address
@@ -318,15 +299,13 @@ func (m *EthereumClient) GetTxEvents(ctx context.Context, hash string, strABI st
 	if contractAddress.String() == NullAddress {
 		return nil, fmt.Errorf("get contract address by tx hash [%s] error: not found", hash)
 	}
-	var contractABI abi.ABI
-	contractABI, err = LoadABI(strABI)
-	if err != nil {
-		return nil, err
-	}
 
+	if len(m.ABI.Events) == 0 {
+		return nil, fmt.Errorf("abi event undefined")
+	}
 	for _, lo := range receipt.Logs {
 		var evt *abi.Event
-		evt, err = contractABI.EventByID(lo.Topics[0])
+		evt, err = m.ABI.EventByID(lo.Topics[0])
 		if err != nil {
 			continue //event id not found
 		}
@@ -336,7 +315,7 @@ func (m *EthereumClient) GetTxEvents(ctx context.Context, hash string, strABI st
 		events = append(events, &CallEvent{
 			Event: evt,
 			Log:   *lo,
-			ABI:   contractABI,
+			ABI:   m.ABI,
 		})
 	}
 	return events, nil
