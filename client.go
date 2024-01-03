@@ -1,7 +1,6 @@
 package ethclient
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"github.com/ethereum/go-ethereum"
@@ -11,26 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"math/big"
-	"os"
-	"strings"
 )
-
-const (
-	hexPrefix   = "0x"
-	NullAddress = "0x0000000000000000000000000000000000000000"
-)
-
-type CallInput struct {
-	Argument abi.Argument
-	Value    interface{}
-}
-
-type CallMethod struct {
-	Name   string
-	Sig    string
-	ID     string
-	Inputs []*CallInput
-}
 
 type EthereumClient struct {
 	ethcli *ethclient.Client
@@ -282,7 +262,7 @@ func (m *EthereumClient) GetTxCallMethod(ctx context.Context, hash string, strAB
 		return nil, fmt.Errorf("get contract address by tx hash [%s] error: not found", hash)
 	}
 	var contractABI abi.ABI
-	contractABI, err = m.LoadABI(strABI)
+	contractABI, err = LoadABI(strABI)
 	if err != nil {
 		return nil, err
 	}
@@ -316,7 +296,7 @@ func (m *EthereumClient) GetTxCallMethod(ctx context.Context, hash string, strAB
 	}, nil
 }
 
-func (m *EthereumClient) GetTxEvents(ctx context.Context, hash string, strABI string) (events []*CallMethod, err error) {
+func (m *EthereumClient) GetTxEvents(ctx context.Context, hash string, strABI string) (events []*CallEvent, err error) {
 	var tx *types.Transaction
 	var receipt *types.Receipt
 	var contractAddress common.Address
@@ -339,7 +319,7 @@ func (m *EthereumClient) GetTxEvents(ctx context.Context, hash string, strABI st
 		return nil, fmt.Errorf("get contract address by tx hash [%s] error: not found", hash)
 	}
 	var contractABI abi.ABI
-	contractABI, err = m.LoadABI(strABI)
+	contractABI, err = LoadABI(strABI)
 	if err != nil {
 		return nil, err
 	}
@@ -353,51 +333,11 @@ func (m *EthereumClient) GetTxEvents(ctx context.Context, hash string, strABI st
 		if evt == nil {
 			continue
 		}
-		inputValues := lo.Topics[1:]
-		var inputs []*CallInput
-		for i, v := range inputValues {
-			inputs = append(inputs, &CallInput{
-				Argument: evt.Inputs[i],
-				Value:    v.String(),
-			})
-		}
-		events = append(events, &CallMethod{
-			Name:   evt.Name,
-			Sig:    evt.Sig,
-			ID:     evt.ID.String(),
-			Inputs: inputs,
+		events = append(events, &CallEvent{
+			Event: evt,
+			Log:   *lo,
+			ABI:   contractABI,
 		})
 	}
 	return events, nil
-}
-
-// LoadABI load ABI from file or json string
-func (m *EthereumClient) LoadABI(strABI string) (contractABI abi.ABI, err error) {
-	if strings.HasSuffix(strABI, ".abi") {
-		return m.loadABIFromFile(strABI)
-	}
-	return m.loadABIFromString(strABI)
-}
-
-func (m *EthereumClient) loadABIFromFile(strAbiFile string) (contractABI abi.ABI, err error) {
-	var file *os.File
-	file, err = os.Open(strAbiFile)
-	if err != nil {
-		return abi.ABI{}, fmt.Errorf("read abi file %s error: %s", strAbiFile, err.Error())
-	}
-
-	contractABI, err = abi.JSON(file)
-	if err != nil {
-		return abi.ABI{}, fmt.Errorf("unmarshal abi json error: %s", err.Error())
-	}
-	return contractABI, nil
-}
-
-func (m *EthereumClient) loadABIFromString(strAbi string) (contractABI abi.ABI, err error) {
-	reader := bytes.NewBufferString(strAbi)
-	contractABI, err = abi.JSON(reader)
-	if err != nil {
-		return abi.ABI{}, fmt.Errorf("unmarshal abi json error: %s", err.Error())
-	}
-	return contractABI, nil
 }
