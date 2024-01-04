@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/civet148/ethclient/contracts/erc721"
 	"github.com/ethereum/go-ethereum/core/types"
 	"testing"
 )
@@ -66,12 +67,14 @@ func TestGetTxEvents(t *testing.T) {
 	}
 	for _, e := range events {
 		fmt.Printf("event name %s\n", e.Event.Name)
-		//var transfer erc721.Erc721Transfer
-		//if err = e.Unpack(&transfer); err != nil {
-		//	fmt.Printf("unpack event %s error %s\n", e.Event.Name, err)
-		//	return
-		//}
-		//printJson("[Transfer]", transfer)
+		if e.Name() == "Transfer" {
+			var transfer erc721.Erc721Transfer
+			if err = e.Unpack(&transfer); err != nil {
+				fmt.Printf("unpack event %s error %s\n", e.Event.Name, err)
+				return
+			}
+			printJson("[Transfer]", transfer)
+		}
 	}
 }
 
